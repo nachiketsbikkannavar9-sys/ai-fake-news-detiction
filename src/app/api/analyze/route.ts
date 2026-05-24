@@ -23,11 +23,13 @@ export async function POST(request: Request) {
     const isFake = fakeKeywords.some(keyword => lowerContent.includes(keyword));
 
     if (isFake) {
+      // Generate randomized "fake" scores
+      const baseFakeScore = Math.floor(Math.random() * 25) + 10; // 10 to 34
       return NextResponse.json({
-        authenticityScore: 24,
-        fakeProbability: 76,
-        genuineProbability: 24,
-        sourceCredibilityScore: 12,
+        authenticityScore: baseFakeScore,
+        fakeProbability: 100 - baseFakeScore,
+        genuineProbability: baseFakeScore,
+        sourceCredibilityScore: Math.floor(Math.random() * 20) + 5, // 5 to 24
         verdict: "High Probability of Misinformation",
         explanation: "This article may be misleading because: No trusted sources support the claim, emotional language detected, and statistics appear unverifiable.",
         evidence: [
@@ -39,11 +41,13 @@ export async function POST(request: Request) {
       });
     }
 
+    // Generate randomized "genuine" scores
+    const baseGenuineScore = Math.floor(Math.random() * 15) + 82; // 82 to 96
     return NextResponse.json({
-      authenticityScore: 92,
-      fakeProbability: 8,
-      genuineProbability: 92,
-      sourceCredibilityScore: 88,
+      authenticityScore: baseGenuineScore,
+      fakeProbability: 100 - baseGenuineScore,
+      genuineProbability: baseGenuineScore,
+      sourceCredibilityScore: Math.floor(Math.random() * 15) + 80, // 80 to 94
       verdict: "Likely Genuine",
       explanation: "This content aligns with known facts from multiple verified sources. The tone is neutral and informative.",
       evidence: [
