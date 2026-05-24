@@ -14,6 +14,7 @@ const navLinks = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
 
   return (
     <nav className="fixed top-0 w-full z-50 glass-panel border-b border-glass-border">
@@ -44,13 +45,30 @@ export default function Navbar() {
             </div>
           </div>
           
-          <div className="hidden md:flex gap-4">
+          <div className="hidden md:flex items-center gap-4">
             <Link href="/admin" className="text-sm font-medium text-gray-300 hover:text-white px-3 py-2 transition-colors">
               Admin
             </Link>
-            <button className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-              Sign In
-            </button>
+            {isSignedIn ? (
+              <div className="flex items-center gap-4">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center text-white font-bold text-sm">
+                  AD
+                </div>
+                <button 
+                  onClick={() => setIsSignedIn(false)}
+                  className="text-sm font-medium text-gray-400 hover:text-red-400 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsSignedIn(true)}
+                className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+              >
+                Sign In
+              </button>
+            )}
           </div>
           
           <div className="md:hidden flex items-center">
