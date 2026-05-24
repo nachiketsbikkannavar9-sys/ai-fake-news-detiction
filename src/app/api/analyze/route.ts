@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+export const maxDuration = 60; // Increase Vercel timeout to 60 seconds
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
