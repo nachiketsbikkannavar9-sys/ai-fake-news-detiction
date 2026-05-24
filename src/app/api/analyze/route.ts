@@ -8,10 +8,19 @@ export async function POST(request: Request) {
     // Simulate AI processing delay
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Dummy AI analysis logic based on keywords
-    const isFake = content.toLowerCase().includes("aliens") || 
-                   content.toLowerCase().includes("secret cure") ||
-                   content.toLowerCase().includes("shocking truth");
+    // Expanded dummy AI analysis logic based on keywords
+    const lowerContent = content.toLowerCase();
+    
+    // List of suspicious keywords for the mock demo
+    const fakeKeywords = [
+      "alien", "secret cure", "shocking truth", "miracle", "hoax", 
+      "illuminati", "flat earth", "gravity", "drifting", "anomaly", 
+      "microchip", "5g", "lizard", "unbelievable", "mind control",
+      "reptilian", "fake", "conspiracy", "cern", "hollow earth",
+      "time travel", "teleport", "perpetual motion"
+    ];
+
+    const isFake = fakeKeywords.some(keyword => lowerContent.includes(keyword));
 
     if (isFake) {
       return NextResponse.json({
