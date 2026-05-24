@@ -29,8 +29,8 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Using gemini-1.5-flash as it's the fastest and highly capable for this analysis
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Using gemini-3.5-flash as it is supported by the provided API key
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
     const prompt = `You are an expert AI fact-checker and cybersecurity analyst. Your job is to analyze the following news content/claim and determine if it is fake news, misinformation, misleading, or genuine.
     
