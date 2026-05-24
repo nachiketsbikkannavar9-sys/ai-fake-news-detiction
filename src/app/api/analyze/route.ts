@@ -1,25 +1,11 @@
 import { NextResponse } from "next/server";
-
-// Helper function to create a consistent hash from a string
-function getStringHash(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
-}
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { content, type } = body;
+    const { content } = body;
 
-    // Simulate AI processing delay
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // 1. Length Check
     if (!content || content.trim().length < 15) {
       return NextResponse.json({
         authenticityScore: 50,
@@ -34,74 +20,56 @@ export async function POST(request: Request) {
       });
     }
 
-    const lowerContent = content.toLowerCase();
-    
-    // 2. Keyword matching
-    const fakeKeywords = [
-      "alien", "secret cure", "shocking truth", "miracle", "hoax", 
-      "illuminati", "flat earth", "gravity", "drifting", "anomaly", 
-      "microchip", "5g", "lizard", "unbelievable", "mind control",
-      "reptilian", "conspiracy", "hollow earth", "time travel", "teleport"
-    ];
-    const genuineKeywords = [
-      "according to the world health organization", "reuters reports", 
-      "associated press", "official statement", "peer-reviewed study"
-    ];
-
-    const hasFakeKeywords = fakeKeywords.some(keyword => lowerContent.includes(keyword));
-    const hasGenuineKeywords = genuineKeywords.some(keyword => lowerContent.includes(keyword));
-    
-    // 3. Stylistic checks (Clickbait / ALL CAPS)
-    const hasExcessivePunctuation = (content.match(/!{2,}/g) || []).length > 0;
-    const uppercaseRatio = content.replace(/[^A-Z]/g, '').length / content.length;
-    const isClickbait = hasExcessivePunctuation || uppercaseRatio > 0.3;
-
-    let finalScore = 50;
-    let verdict = "";
-    let explanation = "";
-
-    // 4. Scoring Engine
-    if (hasFakeKeywords || isClickbait) {
-      finalScore = Math.floor(Math.random() * 25) + 10; // 10-34
-      verdict = "High Probability of Misinformation";
-      explanation = "This article exhibits signs of misinformation. It contains unverifiable claims, emotional or clickbait language, and lacks reputable sources.";
-    } else if (hasGenuineKeywords) {
-      finalScore = Math.floor(Math.random() * 15) + 82; // 82-96
-      verdict = "Likely Genuine";
-      explanation = "This content aligns with known facts from verified sources. The tone is informative and well-supported.";
-    } else {
-      // Deterministic pseudo-random scoring for ANY generic text based on its specific characters!
-      const hash = getStringHash(lowerContent);
-      finalScore = (hash % 60) + 20; // Maps perfectly between 20 and 79
-      
-      if (finalScore > 60) {
-        verdict = "Moderately Reliable";
-        explanation = "The content seems generally reliable but lacks strong verification from tier-1 sources. Read with mild caution.";
-      } else if (finalScore > 40) {
-        verdict = "Mixed / Unverified Context";
-        explanation = "The AI found mixed signals. The text may contain opinion disguised as fact, or facts presented out of context.";
-      } else {
-        verdict = "Potentially Misleading";
-        explanation = "The content lacks authoritative backing and shares stylistic similarities with known misleading or subjective articles.";
-      }
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "your_api_key_goes_here") {
+      return NextResponse.json(
+        { error: "Gemini API Key is missing. Please add it to your .env.local file." },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({
-      authenticityScore: finalScore,
-      fakeProbability: 100 - finalScore,
-      genuineProbability: finalScore,
-      sourceCredibilityScore: Math.max(10, finalScore - (Math.floor(Math.random() * 10))),
-      verdict,
-      explanation,
-      evidence: [
-        { title: "Semantic Analysis", description: "Cross-referenced semantic structure against our neural database.", url: "#" },
-        { title: "Source Verification", description: finalScore > 50 ? "Traces found in standard news directories." : "No reliable primary source identified.", url: "#" }
-      ],
-      emotionalLanguage: isClickbait,
-      clickbait: isClickbait,
-    });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // Using gemini-1.5-flash as it's the fastest and highly capable for this analysis
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `You are an expert AI fact-checker and cybersecurity analyst. Your job is to analyze the following news content/claim and determine if it is fake news, misinformation, misleading, or genuine.
+    
+Analyze the following text:
+"""
+${content}
+"""
+
+Return ONLY a JSON object exactly matching this structure. Do not use markdown blocks, just the raw JSON string:
+{
+  "authenticityScore": <number between 0 and 100, where 100 is perfectly genuine and 0 is completely fake>,
+  "fakeProbability": <number between 0 and 100>,
+  "genuineProbability": <number between 0 and 100>,
+  "sourceCredibilityScore": <number between 0 and 100>,
+  "verdict": "<Short string like 'High Probability of Misinformation', 'Likely Genuine', 'Mixed / Unverified', etc.>",
+  "explanation": "<A clear 2-3 sentence explanation of why this is true or fake based on your knowledge base. Cite real-world facts if applicable.>",
+  "evidence": [
+    { "title": "<Source or Evidence Name>", "description": "<Brief description of what this source says about the claim>", "url": "#" }
+  ],
+  "emotionalLanguage": <boolean>,
+  "clickbait": <boolean>
+}`;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    
+    // Clean up potential markdown formatting from Gemini response
+    const cleanedText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    try {
+      const parsedData = JSON.parse(cleanedText);
+      return NextResponse.json(parsedData);
+    } catch (parseError) {
+      console.error("Failed to parse Gemini response:", cleanedText);
+      return NextResponse.json({ error: "AI returned an invalid format. Try again." }, { status: 500 });
+    }
 
   } catch (error) {
-    return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
+    console.error("Gemini API Error:", error);
+    return NextResponse.json({ error: "Failed to process request with AI. Check API Key or try again." }, { status: 500 });
   }
 }
