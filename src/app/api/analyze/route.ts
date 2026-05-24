@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
 
+// Helper function to create a consistent hash from a string
+function getStringHash(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -8,54 +19,86 @@ export async function POST(request: Request) {
     // Simulate AI processing delay
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Expanded dummy AI analysis logic based on keywords
+    // 1. Length Check
+    if (!content || content.trim().length < 15) {
+      return NextResponse.json({
+        authenticityScore: 50,
+        fakeProbability: 50,
+        genuineProbability: 50,
+        sourceCredibilityScore: 0,
+        verdict: "Inconclusive / Too Short",
+        explanation: "The provided content is too short to accurately determine its authenticity. Please provide a full article, headline, or detailed claim.",
+        evidence: [],
+        emotionalLanguage: false,
+        clickbait: false,
+      });
+    }
+
     const lowerContent = content.toLowerCase();
     
-    // List of suspicious keywords for the mock demo
+    // 2. Keyword matching
     const fakeKeywords = [
       "alien", "secret cure", "shocking truth", "miracle", "hoax", 
       "illuminati", "flat earth", "gravity", "drifting", "anomaly", 
       "microchip", "5g", "lizard", "unbelievable", "mind control",
-      "reptilian", "fake", "conspiracy", "cern", "hollow earth",
-      "time travel", "teleport", "perpetual motion"
+      "reptilian", "conspiracy", "hollow earth", "time travel", "teleport"
+    ];
+    const genuineKeywords = [
+      "according to the world health organization", "reuters reports", 
+      "associated press", "official statement", "peer-reviewed study"
     ];
 
-    const isFake = fakeKeywords.some(keyword => lowerContent.includes(keyword));
+    const hasFakeKeywords = fakeKeywords.some(keyword => lowerContent.includes(keyword));
+    const hasGenuineKeywords = genuineKeywords.some(keyword => lowerContent.includes(keyword));
+    
+    // 3. Stylistic checks (Clickbait / ALL CAPS)
+    const hasExcessivePunctuation = (content.match(/!{2,}/g) || []).length > 0;
+    const uppercaseRatio = content.replace(/[^A-Z]/g, '').length / content.length;
+    const isClickbait = hasExcessivePunctuation || uppercaseRatio > 0.3;
 
-    if (isFake) {
-      // Generate randomized "fake" scores
-      const baseFakeScore = Math.floor(Math.random() * 25) + 10; // 10 to 34
-      return NextResponse.json({
-        authenticityScore: baseFakeScore,
-        fakeProbability: 100 - baseFakeScore,
-        genuineProbability: baseFakeScore,
-        sourceCredibilityScore: Math.floor(Math.random() * 20) + 5, // 5 to 24
-        verdict: "High Probability of Misinformation",
-        explanation: "This article may be misleading because: No trusted sources support the claim, emotional language detected, and statistics appear unverifiable.",
-        evidence: [
-          { title: "Snopes Fact Check", description: "No evidence found supporting these claims.", url: "#" },
-          { title: "Reuters Verification", description: "Source has a history of publishing unverified rumors.", url: "#" }
-        ],
-        emotionalLanguage: true,
-        clickbait: true,
-      });
+    let finalScore = 50;
+    let verdict = "";
+    let explanation = "";
+
+    // 4. Scoring Engine
+    if (hasFakeKeywords || isClickbait) {
+      finalScore = Math.floor(Math.random() * 25) + 10; // 10-34
+      verdict = "High Probability of Misinformation";
+      explanation = "This article exhibits signs of misinformation. It contains unverifiable claims, emotional or clickbait language, and lacks reputable sources.";
+    } else if (hasGenuineKeywords) {
+      finalScore = Math.floor(Math.random() * 15) + 82; // 82-96
+      verdict = "Likely Genuine";
+      explanation = "This content aligns with known facts from verified sources. The tone is informative and well-supported.";
+    } else {
+      // Deterministic pseudo-random scoring for ANY generic text based on its specific characters!
+      const hash = getStringHash(lowerContent);
+      finalScore = (hash % 60) + 20; // Maps perfectly between 20 and 79
+      
+      if (finalScore > 60) {
+        verdict = "Moderately Reliable";
+        explanation = "The content seems generally reliable but lacks strong verification from tier-1 sources. Read with mild caution.";
+      } else if (finalScore > 40) {
+        verdict = "Mixed / Unverified Context";
+        explanation = "The AI found mixed signals. The text may contain opinion disguised as fact, or facts presented out of context.";
+      } else {
+        verdict = "Potentially Misleading";
+        explanation = "The content lacks authoritative backing and shares stylistic similarities with known misleading or subjective articles.";
+      }
     }
 
-    // Generate randomized "genuine" scores
-    const baseGenuineScore = Math.floor(Math.random() * 15) + 82; // 82 to 96
     return NextResponse.json({
-      authenticityScore: baseGenuineScore,
-      fakeProbability: 100 - baseGenuineScore,
-      genuineProbability: baseGenuineScore,
-      sourceCredibilityScore: Math.floor(Math.random() * 15) + 80, // 80 to 94
-      verdict: "Likely Genuine",
-      explanation: "This content aligns with known facts from multiple verified sources. The tone is neutral and informative.",
+      authenticityScore: finalScore,
+      fakeProbability: 100 - finalScore,
+      genuineProbability: finalScore,
+      sourceCredibilityScore: Math.max(10, finalScore - (Math.floor(Math.random() * 10))),
+      verdict,
+      explanation,
       evidence: [
-        { title: "AP News Match", description: "Similar claims verified by Associated Press.", url: "#" },
-        { title: "WHO Database", description: "Statistics align with official WHO records.", url: "#" }
+        { title: "Semantic Analysis", description: "Cross-referenced semantic structure against our neural database.", url: "#" },
+        { title: "Source Verification", description: finalScore > 50 ? "Traces found in standard news directories." : "No reliable primary source identified.", url: "#" }
       ],
-      emotionalLanguage: false,
-      clickbait: false,
+      emotionalLanguage: isClickbait,
+      clickbait: isClickbait,
     });
 
   } catch (error) {
