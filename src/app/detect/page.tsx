@@ -126,7 +126,18 @@ export default function DetectPage() {
           </motion.div>
         )}
 
-        {result && !isScanning && (
+        {result && !isScanning && result.error ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <GlassCard className="p-8 text-center border-t-4 border-t-red-500">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-red-400 mb-2">Analysis Failed</h3>
+              <p className="text-gray-300">{result.error}</p>
+            </GlassCard>
+          </motion.div>
+        ) : result && !isScanning && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
