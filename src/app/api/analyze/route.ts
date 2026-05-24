@@ -57,11 +57,18 @@ Return ONLY a JSON object exactly matching this structure. Do not use markdown b
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     
-    // Clean up potential markdown formatting from Gemini response
-    const cleanedText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+    // Extract JSON block in case Gemini adds markdown or preamble text
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON object found in Gemini response");
+    }
+    
+    const cleanedText = jsonMatch[0];
     
     try {
       const parsedData = JSON.parse(cleanedText);
+      // Ensure evidence array exists to prevent frontend crashes
+      if (!parsedData.evidence) parsedData.evidence = [];
       return NextResponse.json(parsedData);
     } catch (parseError) {
       console.error("Failed to parse Gemini response:", cleanedText);

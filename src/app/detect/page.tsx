@@ -194,7 +194,7 @@ export default function DetectPage() {
               <div>
                 <h4 className="text-sm font-semibold text-gray-400 uppercase mb-3 tracking-wider">Verification Evidence</h4>
                 <div className="space-y-3">
-                  {result.evidence.map((ev: any, idx: number) => (
+                  {(result.evidence || []).map((ev: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-3 bg-gray-900/30 p-3 rounded-lg border border-gray-800/50">
                       <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
                       <div>
